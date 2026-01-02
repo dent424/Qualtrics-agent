@@ -18,6 +18,7 @@ Quick references for Claude Code:
 - `reference/qualtrics-selectors.md` - Qualtrics DOM structure and selectors
 - `reference/persona-system.md` - Persona schema and presets (4 personas)
 - `reference/persona-response-guide.md` - How to respond as each persona
+- `reference/behavioral-signals.md` - Human-like timing patterns (typing speed, reading time, etc.)
 
 ## Tech Stack
 
@@ -39,11 +40,14 @@ npm install                          # Install dependencies
 3. `disengaged-student` - 20M student, rushes through (high satisficing)
 4. `skeptical-professional` - 45F attorney, critical, low acquiescence
 
-## Tools to Build
+## Utility Functions
 
-### 1. Utility Functions (`src/utils/`)
+### Built (`src/utils/`)
+- ✅ `behavioral.ts` - Human-like timing (typing speed, reading time, hesitation)
+
+### To Build
 - `browser.ts` - Launch/manage Playwright browser
-- `survey-parser.ts` - Extract questions from DOM
+- `parser.ts` - Extract questions from DOM
 - `persona-loader.ts` - Load persona by ID
 
 ### 2. Slash Command (`/.claude/commands/take-survey.md`)
@@ -65,14 +69,40 @@ You should:
 4. Submit survey when complete
 ```
 
-### 3. Workflow
+## Workflow Example
+
 1. User runs `/take-survey https://... young-urban-progressive`
 2. Claude Code:
    - Reads persona from `src/personas/presets.ts`
    - Launches browser via Bash + Playwright script
-   - Loops through questions:
-     - Parses DOM (Grep/Read for question text)
-     - Takes screenshot (Read tool for images)
-     - Decides answer (using persona-response-guide.md)
-     - Fills answer (Bash + Playwright commands)
-   - Shows progress in chat
+   - For each question:
+     - **Parse**: Extract question text/options from DOM
+     - **Screenshot**: Verify visual content (catch prompt injection)
+     - **Decide**: Choose answer using persona-response-guide.md
+     - **Read delay**: `await page.waitForTimeout(getReadingTime(questionText, persona))`
+     - **Think delay**: `await page.waitForTimeout(getThinkingTime(persona))`
+     - **Fill answer**: Using Playwright with realistic timing
+     - **Next delay**: `await page.waitForTimeout(getNextButtonDelay(persona))`
+     - **Click Next**
+   - Submit survey when complete
+   - Show progress/results to user
+
+### Example with Behavioral Timing
+
+```typescript
+// Read question (persona-specific speed)
+const readTime = getReadingTime(questionText, persona);
+await page.waitForTimeout(readTime);
+
+// Think about answer
+const thinkTime = getThinkingTime(persona);
+await page.waitForTimeout(thinkTime);
+
+// Click answer (with mouse movement delay)
+await page.waitForTimeout(getClickDelay(persona));
+await page.locator(`input[type="radio"]`).nth(selectedIndex).check();
+
+// Delay before Next
+await page.waitForTimeout(getNextButtonDelay(persona));
+await page.locator('#NextButton').click();
+```
