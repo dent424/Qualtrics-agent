@@ -14,10 +14,6 @@ function randomBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min;
 }
 
-/** Random integer between min and max (inclusive) */
-function randomInt(min: number, max: number): number {
-  return Math.floor(randomBetween(min, max + 1));
-}
 
 /**
  * Calculate inter-keystroke interval (IKI) for typing
@@ -231,6 +227,8 @@ export function generateTypingPattern(
 
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
+    if (!char) continue; // Skip if undefined
+
     let delay = getTypingDelay(persona);
 
     // Longer pause at spaces (word boundaries)
@@ -244,7 +242,8 @@ export function generateTypingPattern(
     }
 
     // Slightly longer delay after punctuation
-    if (i > 0 && /[.,!?]/.test(text[i - 1])) {
+    const prevChar = text[i - 1];
+    if (i > 0 && prevChar && /[.,!?]/.test(prevChar)) {
       delay += randomBetween(100, 300);
     }
 

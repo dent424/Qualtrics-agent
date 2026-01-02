@@ -7,7 +7,8 @@
  * This helps avoid bot detection by mimicking natural human cursor patterns.
  */
 
-import { createCursor, GhostCursor } from 'ghost-cursor';
+import { createCursor } from 'ghost-cursor';
+import type { GhostCursor } from 'ghost-cursor';
 import type { Page } from 'playwright';
 
 let ghostCursor: GhostCursor | null = null;
@@ -40,7 +41,6 @@ export async function humanClick(
     ghostCursor = await initGhostCursor(page);
   }
 
-  const element = await page.locator(selector);
   await ghostCursor.click(selector, options);
 }
 

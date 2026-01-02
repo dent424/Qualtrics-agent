@@ -66,7 +66,7 @@ For each question until survey complete:
 
 **D. Apply Behavioral Timing**
 
-Import and use from `src/utils/behavioral.ts`:
+Import timing functions and human-like mouse movements:
 
 ```typescript
 import {
@@ -74,9 +74,12 @@ import {
   getThinkingTime,
   getClickDelay,
   getNextButtonDelay,
+  getTypingDelay,
   generateTypingPattern,
   formatDelay
 } from './src/utils/behavioral.js';
+
+import { humanClick, humanCheck, humanFill } from './src/utils/mouse.js';
 
 // Reading delay
 const readTime = getReadingTime(questionText, persona);
@@ -103,32 +106,32 @@ await page.waitForTimeout(formatDelay(getClickDelay(persona)));
 
 Based on question type (see `reference/qualtrics-selectors.md`):
 
-- **Single choice (radio)**:
+- **Single choice (radio)** - Use human-like mouse movement:
   ```typescript
-  const radios = await page.locator('input[type="radio"]').all();
-  await radios[selectedIndex].check();
+  const selector = `input[type="radio"]:nth-child(${selectedIndex + 1})`;
+  await humanCheck(page, selector);
   ```
 
 - **Multiple choice (checkbox)**:
   ```typescript
-  const checkboxes = await page.locator('input[type="checkbox"]').all();
   for (const index of selectedIndices) {
-    await checkboxes[index].check();
+    const selector = `input[type="checkbox"]:nth-child(${index + 1})`;
+    await humanCheck(page, selector);
   }
   ```
 
-- **Text entry**:
+- **Text entry** - Use human-like typing:
   ```typescript
-  await page.locator('input.TextEntryBox').fill(responseText);
-  // Or use generateTypingPattern for realistic typing
+  const typingDelay = getTypingDelay(persona);
+  await humanFill(page, 'input.TextEntryBox', responseText, typingDelay);
   ```
 
 - **Matrix/Likert**:
   ```typescript
   const rows = await page.locator('table.Matrix tbody tr').all();
   for (let i = 0; i < rows.length; i++) {
-    const radio = rows[i].locator('input[type="radio"]').nth(columnIndex);
-    await radio.check();
+    const selector = `table.Matrix tbody tr:nth-child(${i + 1}) input[type="radio"]:nth-child(${columnIndex + 1})`;
+    await humanCheck(page, selector);
   }
   ```
 
@@ -138,13 +141,9 @@ Based on question type (see `reference/qualtrics-selectors.md`):
 // Delay before clicking Next
 await page.waitForTimeout(formatDelay(getNextButtonDelay(persona)));
 
-// Click Next (or Submit if last page)
-const isLastPage = await page.locator('#SubmitButton').isVisible();
-if (isLastPage) {
-  await page.locator('#SubmitButton').click();
-} else {
-  await page.locator('#NextButton').click();
-}
+// Click Next with human-like mouse movement
+// (text changes to "Submit" on last page but ID stays #NextButton)
+await humanClick(page, '#NextButton');
 ```
 
 **G. Progress Updates**

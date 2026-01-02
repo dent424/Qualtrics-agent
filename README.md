@@ -79,13 +79,20 @@ src/
 ├── personas/          # Persona definitions
 │   ├── types.ts       # TypeScript types
 │   └── presets.ts     # 4 preset personas
-└── utils/             # Utility functions for Claude Code
-    ├── browser.ts     # Browser management
-    └── parser.ts      # DOM parsing
+└── utils/             # Utility functions
+    ├── behavioral.ts  # Human-like timing patterns
+    └── mouse.ts       # Human-like mouse movements
 
-.claude/
-└── commands/
-    └── take-survey.md # Slash command definition
+.claude/commands/      # Slash commands for Claude Code
+├── take-survey.md     # Main command
+├── list-personas.md   # List all personas
+└── preview-persona.md # Show persona details
+
+reference/             # Documentation for Claude Code
+├── qualtrics-selectors.md  # DOM structure
+├── persona-response-guide.md  # Decision framework
+├── behavioral-signals.md   # Timing patterns
+└── playwright-api.md       # Browser automation
 ```
 
 ## Personas
