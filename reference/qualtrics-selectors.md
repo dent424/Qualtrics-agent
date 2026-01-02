@@ -2,24 +2,45 @@
 
 Quick reference for automating Qualtrics surveys with Playwright.
 
-## Common DOM Structure
+## ⚠️ Critical Qualtrics Quirks
 
-Qualtrics surveys use consistent CSS classes and HTML structure:
+### DOM Replication During Transitions
+
+**IMPORTANT:** Qualtrics replicates the DOM while page transitions are running. Never select elements immediately after clicking Next!
+
+```typescript
+// ❌ WRONG - might select old DOM
+await page.locator('#NextButton').click();
+const question = await page.locator('.QuestionText').textContent(); // RACE CONDITION!
+
+// ✅ CORRECT - wait for transition to complete
+await page.locator('#NextButton').click();
+await page.waitForLoadState('networkidle', { timeout: 10000 });
+await page.locator('.QuestionText').waitFor({ state: 'visible' });
+const question = await page.locator('.QuestionText').textContent(); // SAFE
+```
+
+### Two Survey Engines
+
+Qualtrics uses two different engines:
+- **JavaScript Form Engine (JFE)** - Single Page App (most common, uses AJAX)
+- **Legacy SurveyEngine** - Traditional page reloads
+
+Both use same selectors but different timing. Always wait for `networkidle` after navigation.
+
+**Source:** [JavaScript & Qualtrics Best Practices](https://medium.com/@mc_bloomfield/javascript-qualtrics-c4bf4fb93fff)
+
+## Common DOM Structure
 
 ### Main Page Elements
 
 ```typescript
-// Next button
+// Next button (also becomes "Submit" on last page - but ID stays #NextButton!)
 page.locator('#NextButton')
-page.getByRole('button', { name: 'Next' })
-page.getByRole('button', { name: /next/i })
+page.getByRole('button', { name: /next|submit/i })
 
 // Previous button
 page.locator('#PreviousButton')
-
-// Submit button
-page.locator('#SubmitButton')
-page.getByRole('button', { name: /submit/i })
 
 // Question container
 page.locator('.QuestionOuter')
@@ -31,373 +52,240 @@ page.locator('.QuestionText')
 page.locator('.QuestionBody')
 ```
 
+**Note:** There is NO `#SubmitButton` - only `#NextButton` exists. The text changes to "Submit" on the last page but the ID remains `#NextButton`.
+
+**Source:** [Change Next Button to Submit](https://community.qualtrics.com/survey-platform-before-march-2021-56/change-next-forward-button-on-final-page-to-submit-finish-etc-390)
+
 ## Question Types
 
 ### 1. Single Choice (Radio Buttons)
-
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">What is your age range?</div>
-  <div class="QuestionBody">
-    <fieldset>
-      <div class="ChoiceStructure">
-        <label>
-          <input type="radio" name="QR~..." value="1">
-          <span>18-24</span>
-        </label>
-      </div>
-      <div class="ChoiceStructure">
-        <label>
-          <input type="radio" name="QR~..." value="2">
-          <span>25-34</span>
-        </label>
-      </div>
-    </fieldset>
-  </div>
-</div>
-```
 
 **Playwright Code:**
 ```typescript
 // Get all radio options
 const radios = await page.locator('input[type="radio"]').all();
+await radios[selectedIndex].check();
 
-// Select the 3rd option (0-indexed)
-await radios[2].check();
-
-// Or select by label text
+// Or by label
 await page.getByLabel('25-34').check();
 ```
 
 ### 2. Multiple Choice (Checkboxes)
 
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">Select all that apply:</div>
-  <div class="QuestionBody">
-    <fieldset>
-      <div class="ChoiceStructure">
-        <label>
-          <input type="checkbox" name="QR~..." value="1">
-          <span>Option 1</span>
-        </label>
-      </div>
-      <div class="ChoiceStructure">
-        <label>
-          <input type="checkbox" name="QR~..." value="2">
-          <span>Option 2</span>
-        </label>
-      </div>
-    </fieldset>
-  </div>
-</div>
-```
-
 **Playwright Code:**
 ```typescript
-// Get all checkbox options
 const checkboxes = await page.locator('input[type="checkbox"]').all();
-
-// Select multiple options (indices 0, 2, 3)
-const selectedIndices = [0, 2, 3];
 for (const index of selectedIndices) {
   await checkboxes[index].check();
 }
-
-// Or by label
-await page.getByLabel('Option 1').check();
-await page.getByLabel('Option 3').check();
 ```
 
-### 3. Matrix/Likert Scale
+### 3. Matrix/Likert Scales
 
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">Rate your agreement:</div>
-  <table class="Matrix">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Disagree</th>
-        <th>Neutral</th>
-        <th>Agree</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr data-row="1">
-        <td>Statement 1</td>
-        <td><input type="radio" name="QR~QID1~1" value="1"></td>
-        <td><input type="radio" name="QR~QID1~1" value="2"></td>
-        <td><input type="radio" name="QR~QID1~1" value="3"></td>
-      </tr>
-      <tr data-row="2">
-        <td>Statement 2</td>
-        <td><input type="radio" name="QR~QID1~2" value="1"></td>
-        <td><input type="radio" name="QR~QID1~2" value="2"></td>
-        <td><input type="radio" name="QR~QID1~2" value="3"></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+**⚠️ IMPORTANT:** Qualtrics uses TWO different table classes for matrices!
+
+**Detection:**
+```typescript
+// Check BOTH possible matrix classes
+const isMatrix1 = await page.locator('table.Matrix').count() > 0;
+const isMatrix2 = await page.locator('table.ChoiceStructure').count() > 0;
+
+if (isMatrix1 || isMatrix2) {
+  // It's a matrix question
+}
 ```
 
 **Playwright Code:**
 ```typescript
-// Get all rows
-const rows = await page.locator('table.Matrix tbody tr').all();
-
-// For each row, select a column
-// responses = [2, 1, 3] means row 1 picks col 2, row 2 picks col 1, etc.
-const responses = [2, 1, 3];
+// Works with both table.Matrix and table.ChoiceStructure
+const rows = await page.locator('table tbody tr').all();
 
 for (let i = 0; i < rows.length; i++) {
   const row = rows[i];
-  const columnIndex = responses[i] - 1; // Convert to 0-indexed
   const radio = row.locator('input[type="radio"]').nth(columnIndex);
   await radio.check();
 }
 ```
 
-**Common CSS Classes:**
+**Source:** [Matrix Table Selectors](https://community.qualtrics.com/custom-code-12/narrow-matrix-table-11205)
+
+### 4. Slider Questions
+
+**⚠️ TWO possible selectors:**
+
 ```typescript
-// Matrix table
-page.locator('table.Matrix')
+// Try both selectors
+async function setSlider(page: Page, value: number) {
+  // Option 1: Standard HTML5 range input
+  let slider = await page.locator('input[type="range"]').count();
+  if (slider > 0) {
+    await page.locator('input[type="range"]').fill(String(value));
+    return;
+  }
 
-// Matrix rows
-page.locator('table.Matrix tbody tr')
-page.locator('tr.ChoiceRow')
-
-// Specific column in matrix
-page.locator('td.c1')  // First column
-page.locator('td.c2')  // Second column
-page.locator('td.c3')  // Third column
+  // Option 2: Qualtrics .ResultsInput class
+  slider = await page.locator('.ResultsInput').count();
+  if (slider > 0) {
+    await page.locator('.ResultsInput').fill(String(value));
+    return;
+  }
+}
 ```
 
-### 4. Text Entry (Short Answer)
+**Sources:**
+- [Extract Slider Value](https://community.qualtrics.com/custom-code-12/extract-slider-question-value-and-manipulate-using-javascript-7272)
+- [Custom Sliders Guide](https://rpubs.com/john-henry/custom-qualtrics-sliders)
 
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">What is your occupation?</div>
-  <div class="QuestionBody">
-    <input type="text" class="TextEntryBox">
-  </div>
-</div>
-```
+### 5. Text Entry (Short Answer)
 
-**Playwright Code:**
+**⚠️ CRITICAL:** Qualtrics uses TWO different classes for text entry!
+
 ```typescript
-// Fill text input
-await page.locator('input.TextEntryBox').fill('Marketing Manager');
+async function fillTextEntry(page: Page, text: string) {
+  // Try all possible text entry selectors in order
 
-// Or by type
-await page.locator('input[type="text"]').fill('Marketing Manager');
+  // Option 1: Standalone Text Entry questions
+  let input = await page.locator('.InputText').count();
+  if (input > 0) {
+    await page.locator('.InputText').fill(text);
+    return;
+  }
+
+  // Option 2: Multiple Choice with "Allow Text Entry" option
+  input = await page.locator('.TextEntryBox').count();
+  if (input > 0) {
+    await page.locator('.TextEntryBox').fill(text);
+    return;
+  }
+
+  // Option 3: Generic fallback
+  input = await page.locator('input[type="text"]').count();
+  if (input > 0) {
+    await page.locator('input[type="text"]').fill(text);
+    return;
+  }
+
+  console.log("❌ No text entry found!");
+}
 ```
 
-### 5. Text Entry (Long Answer/Essay)
+**Why two classes?**
+- `.InputText` = Standalone "Text Entry" question type
+- `.TextEntryBox` = Multiple Choice question with "Allow text entry" enabled
 
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">Please explain:</div>
-  <div class="QuestionBody">
-    <textarea class="TextEntryBox"></textarea>
-  </div>
-</div>
-```
+**Source:** [Fixing Text Entry Behavior](https://medium.com/@mc_bloomfield/fixing-the-qualtrics-modern-themes-text-entry-behavior-9ebaa4b91479)
 
-**Playwright Code:**
+### 6. Text Entry (Long Answer/Essay)
+
 ```typescript
-// Fill textarea
-await page.locator('textarea.TextEntryBox').fill('This is a longer response...');
-```
+// Textarea
+await page.locator('textarea').fill(longText);
 
-### 6. Slider
-
-**HTML Structure:**
-```html
-<div class="QuestionOuter">
-  <div class="QuestionText">Rate from 0-100:</div>
-  <div class="QuestionBody">
-    <input type="range" min="0" max="100" class="slider">
-  </div>
-</div>
-```
-
-**Playwright Code:**
-```typescript
-// Set slider value
-await page.locator('input[type="range"]').fill('75');
-
-// Or using .evaluate for more control
-await page.locator('input[type="range"]').evaluate((el, value) => {
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-}, '75');
+// Alternative Qualtrics class
+await page.locator('textarea.TextEntryBox').fill(longText);
 ```
 
 ## Question Type Detection
 
+**Robust detection with fallbacks:**
+
 ```typescript
-async function detectQuestionType(page) {
-  // Check for matrix
-  if (await page.locator('table.Matrix').count() > 0) {
-    return 'matrix';
-  }
+async function detectQuestionType(page: Page): Promise<string> {
+  // Check for matrix (TWO possible classes!)
+  if (await page.locator('table.Matrix').count() > 0) return 'matrix';
+  if (await page.locator('table.ChoiceStructure').count() > 0) return 'matrix';
 
-  // Check for slider
-  if (await page.locator('input[type="range"]').count() > 0) {
-    return 'slider';
-  }
+  // Check for slider (TWO possible selectors!)
+  if (await page.locator('input[type="range"]').count() > 0) return 'slider';
+  if (await page.locator('.ResultsInput').count() > 0) return 'slider';
 
-  // Check for textarea (long text)
-  if (await page.locator('textarea.TextEntryBox').count() > 0) {
-    return 'text-long';
-  }
+  // Check for textarea
+  if (await page.locator('textarea').count() > 0) return 'text-long';
 
-  // Check for text input (short text)
-  if (await page.locator('input.TextEntryBox').count() > 0) {
-    return 'text-short';
-  }
+  // Check for text input (TWO possible classes!)
+  if (await page.locator('.InputText').count() > 0) return 'text-short';
+  if (await page.locator('.TextEntryBox').count() > 0) return 'text-short';
 
   // Check for checkboxes
-  if (await page.locator('input[type="checkbox"]').count() > 0) {
-    return 'multiple-choice';
-  }
+  if (await page.locator('input[type="checkbox"]').count() > 0) return 'multiple-choice';
 
   // Check for radio buttons
-  if (await page.locator('input[type="radio"]').count() > 0) {
-    return 'single-choice';
-  }
+  if (await page.locator('input[type="radio"]').count() > 0) return 'single-choice';
 
   return 'unknown';
 }
 ```
 
-## Extracting Question Data
+## Safe Navigation Pattern
+
+**Always use this pattern after clicking Next:**
 
 ```typescript
-// Get question text
-const questionText = await page.locator('.QuestionText').textContent();
+async function clickNextAndWait(page: Page) {
+  // Click Next button
+  await page.locator('#NextButton').click();
 
-// Get all option labels for single/multiple choice
-const options = await page.locator('.ChoiceStructure label').allTextContents();
+  // CRITICAL: Wait for transition to complete
+  // Qualtrics replicates DOM during transitions!
+  try {
+    // Try JFE/SPA approach (most common)
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+  } catch {
+    // Fallback to legacy approach
+    await page.waitForLoadState('load', { timeout: 10000 });
+  }
 
-// Get number of options
-const optionCount = await page.locator('input[type="radio"]').count();
+  // Wait for new question to be visible and stable
+  await page.locator('.QuestionText').waitFor({
+    state: 'visible',
+    timeout: 10000
+  });
 
-// For matrix: get row statements
-const statements = await page.locator('table.Matrix tbody tr td:first-child').allTextContents();
-
-// For matrix: get column headers
-const headers = await page.locator('table.Matrix thead th').allTextContents();
-```
-
-## Common Patterns
-
-### Complete Single Choice Question
-
-```typescript
-// 1. Get question text
-const question = await page.locator('.QuestionText').textContent();
-
-// 2. Get options
-const options = await page.locator('.ChoiceStructure label').allTextContents();
-
-// 3. Select an option (e.g., option 2)
-const radios = await page.locator('input[type="radio"]').all();
-await radios[1].check();
-
-// 4. Click Next
-await page.locator('#NextButton').click();
-```
-
-### Complete Matrix Question
-
-```typescript
-// 1. Get rows
-const rows = await page.locator('table.Matrix tbody tr').all();
-
-// 2. For each row, select a random column
-for (const row of rows) {
-  const radios = await row.locator('input[type="radio"]').all();
-  const randomIndex = Math.floor(Math.random() * radios.length);
-  await radios[randomIndex].check();
-}
-
-// 3. Click Next
-await page.locator('#NextButton').click();
-```
-
-## Useful CSS Selectors
-
-```typescript
-// Question container
-'.QuestionOuter'
-
-// All single choice questions
-'input[type="radio"]'
-
-// All multiple choice questions
-'input[type="checkbox"]'
-
-// All text inputs
-'.TextEntryBox'
-'input[type="text"]'
-
-// All textareas
-'textarea.TextEntryBox'
-
-// Matrix tables
-'table.Matrix'
-
-// Choice labels
-'.ChoiceStructure label'
-'label.SingleAnswer'      // Radio button labels
-'label.MultipleAnswer'    // Checkbox labels
-
-// Radio buttons (alternative selectors)
-'label.q-radio'
-
-// Question ID (useful for targeting specific questions)
-'#QID1'  // Question 1
-'#QID2'  // Question 2
-```
-
-## Navigation
-
-```typescript
-// Wait for page to load
-await page.waitForLoadState('networkidle');
-
-// Wait for next button to be visible
-await page.locator('#NextButton').waitFor({ state: 'visible' });
-
-// Click next
-await page.locator('#NextButton').click();
-
-// Check if we're on the last page (Submit button appears)
-const isLastPage = await page.locator('#SubmitButton').isVisible();
-
-// Submit survey
-if (isLastPage) {
-  await page.locator('#SubmitButton').click();
+  console.log("✓ Next question ready");
 }
 ```
 
 ## Best Practices
 
-1. **Always wait for elements**: Use `waitFor()` or rely on auto-waiting
-2. **Use `.count()` to check existence**: Before trying to interact
-3. **Get all elements first**: Use `.all()` then iterate, don't use `.nth()` in loops
-4. **Check for Next/Submit button**: To know if survey is complete
-5. **Handle loading states**: Wait for `networkidle` after navigation
+### 1. Always Use Fallback Selectors
+
+```typescript
+// ✅ GOOD - tries multiple selectors
+const selectors = ['.InputText', '.TextEntryBox', 'input[type="text"]'];
+for (const sel of selectors) {
+  if (await page.locator(sel).count() > 0) {
+    await page.locator(sel).fill(text);
+    break;
+  }
+}
+```
+
+### 2. Wait for Transitions
+
+```typescript
+// ✅ GOOD - waits for DOM to stabilize
+await page.locator('#NextButton').click();
+await page.waitForLoadState('networkidle');
+await page.locator('.QuestionText').waitFor({ state: 'visible' });
+```
+
+### 3. Use Generous Timeouts
+
+```typescript
+// ✅ GOOD - Qualtrics can be slow
+await page.locator('.QuestionText').waitFor({
+  state: 'visible',
+  timeout: 10000  // 10 seconds
+});
+```
 
 ## Sources
 
-- [Qualtrics CSS Classes Community Discussion](https://community.qualtrics.com/custom-code-12/is-there-a-master-list-of-all-the-question-labels-used-in-css-19933)
-- [Qualtrics Question Types Documentation](https://community.qualtrics.com/survey-platform-54/)
-- [JavaScript & Qualtrics Best Practices](https://medium.com/@mc_bloomfield/javascript-qualtrics-c4bf4fb93fff)
+- [JavaScript & Qualtrics: Best Practices](https://medium.com/@mc_bloomfield/javascript-qualtrics-c4bf4fb93fff)
+- [JavaScript Form Engine](https://medium.com/@mc_bloomfield/javascript-and-qualtrics-getting-started-34f113cbeaaa)
+- [Fixing Text Entry Behavior](https://medium.com/@mc_bloomfield/fixing-the-qualtrics-modern-themes-text-entry-behavior-9ebaa4b91479)
+- [CSS Classes for Questions](https://community.qualtrics.com/custom-code-12/css-classes-for-questions-apply-css-style-to-some-questions-only-2587)
+- [Matrix Table Structure](https://community.qualtrics.com/custom-code-12/narrow-matrix-table-11205)
+- [Next Button Customization](https://community.qualtrics.com/survey-platform-before-march-2021-56/change-next-forward-button-on-final-page-to-submit-finish-etc-390)
+- [Extract Slider Value](https://community.qualtrics.com/custom-code-12/extract-slider-question-value-and-manipulate-using-javascript-7272)
+- [Custom Sliders Guide](https://rpubs.com/john-henry/custom-qualtrics-sliders)
