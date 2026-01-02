@@ -17,12 +17,27 @@ Give Claude Code a survey URL and persona ID, and watch it complete the survey a
 # Install dependencies
 npm install
 
-# Use the slash command (for Claude Code)
+# Main command - Take survey as persona
 /take-survey <survey-url> <persona-id>
 
 # Example
 /take-survey https://survey.qualtrics.com/jfe/form/SV_... young-urban-progressive
+
+# Helper commands
+/list-personas              # Show all available personas
+/preview-persona <id>       # View full persona profile
 ```
+
+## Available Commands
+
+### `/take-survey <url> <persona-id>`
+Complete a Qualtrics survey as a specific persona. The browser will be **visible** (headed mode) so you can watch it work in real-time. Perfect for demos and screenshots!
+
+### `/list-personas`
+Display all 4 available personas with their key characteristics and response styles.
+
+### `/preview-persona <persona-id>`
+Show the complete profile of a specific persona including demographics, personality traits, response biases, and behavioral patterns.
 
 ## Architecture
 
