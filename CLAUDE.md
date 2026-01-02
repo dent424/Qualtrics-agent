@@ -42,14 +42,11 @@ npm install                          # Install dependencies
 
 ## Utility Functions
 
-### Built (`src/utils/`)
+**Available in `src/utils/`:**
 - ✅ `behavioral.ts` - Human-like timing (typing speed, reading time, hesitation)
 - ✅ `mouse.ts` - Human-like mouse movements (Bezier curves, avoids bot detection)
 
-### To Build (Optional)
-- `browser.ts` - Launch/manage Playwright browser
-- `parser.ts` - Extract questions from DOM
-- `persona-loader.ts` - Load persona by ID
+**Note:** You'll write Playwright automation code on-the-fly as needed. No pre-built scripts required.
 
 ### 2. Slash Command (`/.claude/commands/take-survey.md`)
 ```
