@@ -1,14 +1,15 @@
 # Qualtrics Survey Bot Agent
 
-An AI agent that completes Qualtrics surveys using Claude. Different personas respond with different personalities and styles.
+Claude Code autonomously completes Qualtrics surveys as different personas.
 
 ## What It Does
 
-Give it a Qualtrics survey URL and a persona, and watch Claude complete the survey as that character:
-- Reads questions automatically
-- Generates contextually appropriate responses
-- Fills in answers and navigates through the survey
-- Each persona has unique demographics, personality traits, and response styles
+Give Claude Code a survey URL and persona ID, and watch it complete the survey as that character:
+- **Parses DOM** to read questions and options
+- **Takes screenshots** to verify content and catch prompt injection attacks
+- **Decides answers** based on persona's demographics, personality, and biases
+- **Uses Playwright** to fill forms and navigate through survey
+- Each persona has unique traits that influence responses
 
 ## Quick Start
 
@@ -16,21 +17,27 @@ Give it a Qualtrics survey URL and a persona, and watch Claude complete the surv
 # Install dependencies
 npm install
 
-# Set your Claude API key
-export ANTHROPIC_API_KEY=your_key_here
-
-# Run a demo
-npm run demo <survey-url> <persona-id>
+# Use the slash command (for Claude Code)
+/take-survey <survey-url> <persona-id>
 
 # Example
-npm run demo https://survey.qualtrics.com/jfe/form/SV_... young-urban-progressive
+/take-survey https://survey.qualtrics.com/jfe/form/SV_... young-urban-progressive
 ```
+
+## Architecture
+
+**Claude Code is the agent** - not a script calling an API:
+- Uses tools (Bash, Read, Grep) to interact with browser
+- Parses DOM for question text/options
+- Takes screenshots for visual verification
+- Decides answers using persona context
+- Executes Playwright commands to fill forms
 
 ## Tech Stack
 
 - **Playwright** - Browser automation
-- **Claude API** - Response generation
-- **TypeScript** - Type safety
+- **Claude Code** - The AI agent (not API calls)
+- **TypeScript** - Utility functions and types
 
 ## Project Structure
 
@@ -39,8 +46,13 @@ src/
 ├── personas/          # Persona definitions
 │   ├── types.ts       # TypeScript types
 │   └── presets.ts     # 4 preset personas
-├── survey-bot.ts      # Main automation logic
-└── demo.ts            # CLI entry point
+└── utils/             # Utility functions for Claude Code
+    ├── browser.ts     # Browser management
+    └── parser.ts      # DOM parsing
+
+.claude/
+└── commands/
+    └── take-survey.md # Slash command definition
 ```
 
 ## Personas
@@ -71,13 +83,16 @@ Each persona has full demographic and personality profiles that influence how Cl
 
 ## How It Works
 
-1. Opens survey URL in Playwright browser
-2. Detects question type (single choice, multiple choice, text entry, etc.)
-3. Extracts question text and options
-4. Sends to Claude with persona context
-5. Parses Claude's response
-6. Fills in the answer
-7. Clicks "Next" and repeats
+1. User runs `/take-survey <url> <persona-id>`
+2. Claude Code reads persona from `src/personas/presets.ts`
+3. Launches Playwright browser and navigates to survey
+4. For each question:
+   - Parses DOM to extract question text and options
+   - Takes screenshot to verify (catches hidden prompt injection)
+   - Consults `persona-response-guide.md` to decide answer
+   - Uses Playwright to fill answer and click Next
+5. Submits survey when complete
+6. Reports results back to user
 
 ## Use Responsibly
 
