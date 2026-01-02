@@ -44,8 +44,9 @@ npm install                          # Install dependencies
 
 ### Built (`src/utils/`)
 - ✅ `behavioral.ts` - Human-like timing (typing speed, reading time, hesitation)
+- ✅ `mouse.ts` - Human-like mouse movements (Bezier curves, avoids bot detection)
 
-### To Build
+### To Build (Optional)
 - `browser.ts` - Launch/manage Playwright browser
 - `parser.ts` - Extract questions from DOM
 - `persona-loader.ts` - Load persona by ID
@@ -87,9 +88,12 @@ You should:
    - Submit survey when complete
    - Show progress/results to user
 
-### Example with Behavioral Timing
+### Example with Behavioral Timing & Human Mouse Movement
 
 ```typescript
+import { getReadingTime, getThinkingTime, getClickDelay, getNextButtonDelay } from './utils/behavioral';
+import { humanCheck, humanClick } from './utils/mouse';
+
 // Read question (persona-specific speed)
 const readTime = getReadingTime(questionText, persona);
 await page.waitForTimeout(readTime);
@@ -98,11 +102,22 @@ await page.waitForTimeout(readTime);
 const thinkTime = getThinkingTime(persona);
 await page.waitForTimeout(thinkTime);
 
-// Click answer (with mouse movement delay)
+// Click answer with human-like mouse movement (Bezier curves)
 await page.waitForTimeout(getClickDelay(persona));
-await page.locator(`input[type="radio"]`).nth(selectedIndex).check();
+await humanCheck(page, `input[type="radio"]:nth-child(${selectedIndex})`);
 
 // Delay before Next
 await page.waitForTimeout(getNextButtonDelay(persona));
-await page.locator('#NextButton').click();
+await humanClick(page, '#NextButton');
 ```
+
+### Handling Attention Checks
+
+**Claude Code (you!) naturally handles attention checks** - just read the question and understand what it's asking:
+
+- **Commitment requests**: "Please confirm you'll provide thoughtful answers" → Select "Yes, I will"
+- **Factual questions**: "Which of these is a vegetable?" → Select the correct answer
+- **Typed responses**: "Type 'banana' in the box below" → Type exactly what's requested
+- **Trap questions**: "This is an attention check. Please select 'Strongly Disagree'" → Follow the instruction
+
+**No hardcoded logic needed** - you can read and understand these naturally as an LLM.

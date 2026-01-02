@@ -202,6 +202,60 @@ if (count > 0) {
 }
 ```
 
+## Human-Like Mouse Movements
+
+**IMPORTANT:** Standard Playwright clicks follow straight lines, which advanced anti-bot systems can detect. Use the `mouse.ts` utilities for realistic Bezier curve movements.
+
+### Available Functions
+
+```typescript
+import { humanClick, humanFill, humanCheck, humanMove, humanScroll } from './utils/mouse';
+
+// Click with human-like cursor movement
+await humanClick(page, '#next-button');
+
+// Fill input with realistic movement + typing
+await humanFill(page, 'input[name="email"]', 'test@example.com', 150);
+
+// Check checkbox/radio with human movement
+await humanCheck(page, 'input[type="checkbox"]');
+
+// Move cursor to element (without clicking)
+await humanMove(page, '.question-text');
+
+// Scroll with natural randomness
+await humanScroll(page, 'down', 300);
+```
+
+### When to Use
+
+✅ **Use human-like movements for:**
+- Surveys with fraud detection enabled
+- Avoiding reCAPTCHA flags
+- Production automation
+- Research requiring realistic behavior
+
+⚠️ **Standard Playwright is fine for:**
+- Testing/debugging
+- Internal tools
+- Demos without anti-bot detection
+
+### How It Works
+
+The `mouse.ts` utilities use the `ghost-cursor` library to generate Bezier curves between points, mimicking natural human cursor paths instead of straight lines.
+
+**Standard Playwright:**
+```
+Start → (straight line) → Target
+```
+
+**Ghost Cursor:**
+```
+Start → (curved path with acceleration/deceleration) → Target
+```
+
+This makes automation much harder to detect via mouse movement analysis.
+
 ## Best Practices
 
 1. **Prefer role-based locators**: More robust than CSS selectors
@@ -209,6 +263,7 @@ if (count > 0) {
 3. **Use `.all()` for multiple elements**: Better than loops with `.nth()`
 4. **Check visibility before complex actions**: Use `isVisible()` when needed
 5. **Headless mode**: Use `headless: true` for production, `false` for debugging
+6. **Use human-like movements**: Use `humanClick()` etc. to avoid bot detection
 
 ## Sources
 

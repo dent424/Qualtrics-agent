@@ -26,7 +26,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "playwright": "^1.49.1"
+    "playwright": "^1.49.1",
+    "ghost-cursor": "^1.1.19"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
