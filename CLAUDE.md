@@ -1,63 +1,55 @@
 # Qualtrics Survey Bot Agent
 
-Browser automation agent for taking Qualtrics surveys, designed for bot detection research.
-
-## Purpose
-
-Study which behavioral signals reliably discriminate bots from humans in online survey contexts. The bot is the experimental manipulation—we vary agent behaviors systematically to identify detection-relevant features.
+AI agent that completes Qualtrics surveys using Claude. Different personas respond with different personalities.
 
 ## Reference Documentation
 
-Read these before implementing features in the relevant area:
+Quick references for implementation:
 
-- `reference/architecture.md` - Technical stack and component overview
-- `reference/persona-system.md` - Synthetic respondent framework and presets
-- `reference/prompt-engineering.md` - LLM prompting for response generation
-- `reference/detection-signals.md` - Behavioral signals under study
-- `reference/qualtrics-integration.md` - Survey platform specifics
+- `reference/playwright-api.md` - Browser automation with Playwright
+- `reference/claude-api.md` - Claude API for response generation
+- `reference/qualtrics-selectors.md` - Qualtrics DOM structure and selectors
+- `reference/persona-system.md` - Persona schema and presets
+- `reference/prompt-engineering.md` - How to prompt Claude for survey responses
 
 ## Tech Stack
 
-- TypeScript
-- Playwright for browser automation
-- Claude API for response generation
+- **TypeScript** - Type safety
+- **Playwright** - Browser automation
+- **Claude API** - Response generation
 
 ## Key Commands
 
-- `npm run dev` - Development mode
-- `npm test` - Run tests
-- `npm run lint` - Lint and format
+```bash
+npm install                                              # Install dependencies
+npm run demo <survey-url> <persona-id>                  # Run demo
+npm run dev                                             # Development mode
+```
 
-## Project Structure
+## Available Personas
 
-- `src/` - Source code
-  - `browser/` - Playwright automation
-  - `personas/` - Persona definitions and engine
-  - `prompts/` - LLM prompt templates
-  - `signals/` - Behavioral signal generation
-- `reference/` - Project documentation (read-only)
-- `tests/` - Test suites
+1. `young-urban-progressive` - 28F marketing manager
+2. `retired-rural-conservative` - 72M retired factory worker
+3. `disengaged-student` - 20M college student (rushes through)
+4. `skeptical-professional` - 45F attorney (critical thinker)
 
-## Code Standards
+## Implementation Guide
 
-- Strict TypeScript
-- All persona attributes typed
-- Behavioral parameters must be configurable
-- Timing distributions parameterized (not hardcoded)
+### 1. Survey Automation (`src/survey-bot.ts`)
+- Launch Playwright browser
+- Navigate to survey URL
+- Detect question types
+- Extract question text and options
+- Fill answers and click Next
 
-## Research Questions
+### 2. Response Generation
+- Build prompt with persona context
+- Send to Claude API
+- Parse response
+- Map to survey answer format
 
-This tool helps investigate:
-
-1. Which behavioral signals best discriminate LLM-powered bots from humans?
-2. How do existing detection systems perform against sophisticated bots?
-3. What detection methods remain robust as bot capabilities improve?
-
-## Ethical Use
-
-This is a research tool for studying bot detection. Should only be used on:
-- Test surveys where you have explicit permission
-- Research studies with proper IRB approval
-- Bot detection development and validation
-
-Do not use this tool to pollute real survey data or circumvent legitimate data collection.
+### 3. CLI (`src/demo.ts`)
+- Parse command line args
+- Load persona by ID
+- Run survey bot
+- Display progress

@@ -1,130 +1,89 @@
 # Qualtrics Survey Bot Agent
 
-A browser automation agent for taking Qualtrics surveys using LLM-powered response generation. Designed for bot detection research.
+An AI agent that completes Qualtrics surveys using Claude. Different personas respond with different personalities and styles.
 
-## Purpose
+## What It Does
 
-This tool is designed to study which behavioral signals reliably discriminate bots from humans in online survey contexts. The bot serves as an experimental manipulation—we systematically vary agent behaviors to identify detection-relevant features.
-
-## Research Questions
-
-1. Which behavioral signals best discriminate LLM-powered bots from humans?
-2. How do existing detection systems perform against sophisticated bots?
-3. What detection methods remain robust as bot capabilities improve?
+Give it a Qualtrics survey URL and a persona, and watch Claude complete the survey as that character:
+- Reads questions automatically
+- Generates contextually appropriate responses
+- Fills in answers and navigates through the survey
+- Each persona has unique demographics, personality traits, and response styles
 
 ## Quick Start
 
-### Installation
-
 ```bash
+# Install dependencies
 npm install
+
+# Set your Claude API key
+export ANTHROPIC_API_KEY=your_key_here
+
+# Run a demo
+npm run demo <survey-url> <persona-id>
+
+# Example
+npm run demo https://survey.qualtrics.com/jfe/form/SV_... young-urban-progressive
 ```
-
-### Run Development Mode
-
-```bash
-npm run dev
-```
-
-### Run Tests
-
-```bash
-npm test
-```
-
-## Documentation
-
-- **[CLAUDE.md](./CLAUDE.md)** - Quick reference for development
-- **[reference/](./reference/)** - Detailed technical documentation
-  - [architecture.md](./reference/architecture.md) - System architecture and components
-  - [persona-system.md](./reference/persona-system.md) - Synthetic respondent framework
-  - [prompt-engineering.md](./reference/prompt-engineering.md) - LLM prompting strategy
-  - [detection-signals.md](./reference/detection-signals.md) - Behavioral signals under study
-  - [qualtrics-integration.md](./reference/qualtrics-integration.md) - Platform-specific details
 
 ## Tech Stack
 
-- **TypeScript** - Type-safe development with strict mode
-- **Playwright** - Browser automation (preferred over Puppeteer)
-- **Claude API** - LLM-powered response generation
-- **Vitest** - Fast unit testing
+- **Playwright** - Browser automation
+- **Claude API** - Response generation
+- **TypeScript** - Type safety
 
 ## Project Structure
 
 ```
-qualtrics-bot-agent/
-├── CLAUDE.md              # Quick reference
-├── README.md              # This file
-├── package.json           # Dependencies and scripts
-├── tsconfig.json          # TypeScript configuration
-├── reference/             # Technical documentation
-│   ├── architecture.md
-│   ├── persona-system.md
-│   ├── prompt-engineering.md
-│   ├── detection-signals.md
-│   └── qualtrics-integration.md
-├── src/                   # Source code
-│   ├── browser/           # Playwright automation
-│   ├── personas/          # Persona definitions and engine
-│   │   ├── types.ts       # TypeScript types
-│   │   └── presets.ts     # Preset personas
-│   ├── prompts/           # LLM prompt templates
-│   ├── signals/           # Behavioral signal generation
-│   └── index.ts           # Main entry point
-└── tests/                 # Test suites
+src/
+├── personas/          # Persona definitions
+│   ├── types.ts       # TypeScript types
+│   └── presets.ts     # 4 preset personas
+├── survey-bot.ts      # Main automation logic
+└── demo.ts            # CLI entry point
 ```
 
-## Preset Personas
+## Personas
 
-The system includes four preset synthetic respondents:
+The bot includes four different personas with distinct personalities:
 
-1. **young-urban-progressive** - Engaged millennial, 28F, marketing manager
-2. **retired-rural-conservative** - Thorough senior, 72M, retired factory worker
-3. **disengaged-student** - Rushing student, 20M, high satisficing (0.85)
-4. **skeptical-professional** - Critical thinker, 45F, attorney, low acquiescence
+1. **young-urban-progressive**
+   - 28F marketing manager from Massachusetts
+   - Engaged, curious, values sustainability
+   - Thoughtful responses, moderate agreement
 
-See [reference/persona-system.md](./reference/persona-system.md) for full details.
+2. **retired-rural-conservative**
+   - 72M retired factory worker from Iowa
+   - Thorough, patient, traditional values
+   - Takes time, agrees more often
 
-## Development
+3. **disengaged-student**
+   - 20M college student from Florida
+   - Rushing through for course credit
+   - Quick responses, less careful
 
-### Code Standards
+4. **skeptical-professional**
+   - 45F attorney from New York
+   - Critical thinker, questions assumptions
+   - Low acquiescence, analytical
 
-- Strict TypeScript with full type safety
-- All persona attributes must be typed
-- Behavioral parameters must be configurable (not hardcoded)
-- Timing distributions must be parameterized
+Each persona has full demographic and personality profiles that influence how Claude responds to questions.
 
-### Available Scripts
+## How It Works
 
-- `npm run dev` - Run in development mode
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm start` - Run compiled code
-- `npm test` - Run test suite
-- `npm run lint` - Lint code
-- `npm run format` - Format code with Prettier
-- `npm run type-check` - Type check without emitting
+1. Opens survey URL in Playwright browser
+2. Detects question type (single choice, multiple choice, text entry, etc.)
+3. Extracts question text and options
+4. Sends to Claude with persona context
+5. Parses Claude's response
+6. Fills in the answer
+7. Clicks "Next" and repeats
 
-## Ethical Use
+## Use Responsibly
 
-This is a research tool for studying bot detection. It should **only** be used on:
+Only use on:
+- Your own test surveys
+- Surveys where you have permission
+- Research/demo purposes
 
-- Test surveys where you have explicit permission
-- Research studies with proper IRB approval
-- Bot detection development and validation
-
-**Do not use this tool to:**
-- Pollute real survey data
-- Circumvent legitimate data collection
-- Manipulate survey results
-
-## License
-
-MIT
-
-## Contributing
-
-This is a research project. Contributions should focus on:
-- Improving behavioral realism
-- Adding new detection signals to study
-- Enhancing persona diversity
-- Better documentation
+Don't pollute real survey data!
