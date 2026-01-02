@@ -11,12 +11,28 @@ Give Claude Code a survey URL and persona ID, and watch it complete the survey a
 - **Uses Playwright** to fill forms and navigate through survey
 - Each persona has unique traits that influence responses
 
+## Prerequisites
+
+- **Node.js** 18.0.0 or higher ([download](https://nodejs.org/))
+- **Claude Code** (Claude desktop app or VS Code extension)
+- **Git** (to clone the repository)
+
+## Setup (First Time)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/Qualtrics-agent.git
+cd Qualtrics-agent
+
+# 2. Install dependencies (this also installs Playwright browsers automatically)
+npm install
+
+# That's it! The postinstall script handles Playwright browser installation.
+```
+
 ## Quick Start
 
 ```bash
-# Install dependencies
-npm install
-
 # Main command - Take survey as persona
 /take-survey <survey-url> <persona-id>
 
@@ -27,6 +43,8 @@ npm install
 /list-personas              # Show all available personas
 /preview-persona <id>       # View full persona profile
 ```
+
+**Note:** Commands must be run inside Claude Code (desktop app or VS Code extension), not in terminal.
 
 ## Available Commands
 
@@ -108,6 +126,79 @@ Each persona has full demographic and personality profiles that influence how Cl
    - Uses Playwright to fill answer and click Next
 5. Submits survey when complete
 6. Reports results back to user
+
+## Troubleshooting
+
+### "Command not found: /take-survey"
+
+**Problem:** Slash commands not recognized
+
+**Solutions:**
+1. Make sure you're in Claude Code (desktop app or VS Code extension), not terminal
+2. Verify you're in the project directory: `/home/user/Qualtrics-agent`
+3. Check that `.claude/commands/` folder exists with command files
+
+### "Playwright browser not found"
+
+**Problem:** Chromium browser not installed
+
+**Solutions:**
+```bash
+# Manually install Playwright browsers
+npx playwright install chromium
+
+# Or reinstall everything
+rm -rf node_modules
+npm install
+```
+
+### "Cannot find module './src/utils/behavioral.js'"
+
+**Problem:** TypeScript files not accessible
+
+**Solutions:**
+1. The slash command will handle this - just run `/take-survey`
+2. If issues persist, check that `src/utils/behavioral.ts` exists
+
+### "Browser opens but nothing happens"
+
+**Problem:** Possible Qualtrics-specific issue
+
+**Solutions:**
+1. Check the Qualtrics URL is correct and publicly accessible
+2. Try a different survey
+3. Check Claude Code console for errors
+4. Take a screenshot and share with Claude Code for debugging
+
+### "Persona not found"
+
+**Problem:** Invalid persona ID
+
+**Solutions:**
+1. Run `/list-personas` to see valid IDs
+2. Use exact ID: `young-urban-progressive`, `retired-rural-conservative`, `disengaged-student`, or `skeptical-professional`
+3. IDs are case-sensitive and use hyphens
+
+### "Node version error"
+
+**Problem:** Node.js version too old
+
+**Solutions:**
+```bash
+# Check your Node version
+node --version
+
+# Must be 18.0.0 or higher
+# Update Node.js: https://nodejs.org/
+```
+
+### General Debugging
+
+If something isn't working:
+1. Check you ran `npm install` successfully
+2. Verify you're inside the project directory
+3. Run `/list-personas` to test if slash commands work
+4. Share error messages with Claude Code for help
 
 ## Use Responsibly
 
